@@ -1,0 +1,176 @@
+[
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/autonomous_complpolicy.c.o -c /home/nidhal/Desktop/icwmp/src/autonomous_complpolicy.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/autonomous_complpolicy.c",
+  "output": "CMakeFiles/icwmpd.dir/autonomous_complpolicy.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/backupSession.c.o -c /home/nidhal/Desktop/icwmp/src/backupSession.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/backupSession.c",
+  "output": "CMakeFiles/icwmpd.dir/backupSession.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/common.c.o -c /home/nidhal/Desktop/icwmp/src/common.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/common.c",
+  "output": "CMakeFiles/icwmpd.dir/common.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/config.c.o -c /home/nidhal/Desktop/icwmp/src/config.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/config.c",
+  "output": "CMakeFiles/icwmpd.dir/config.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp_cli.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp_cli.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp_cli.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp_cli.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp_du_state.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp_du_state.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp_du_state.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp_du_state.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp_event.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp_event.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp_event.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp_event.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp_http.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp_http.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp_http.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp_http.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/cwmp_zlib.c.o -c /home/nidhal/Desktop/icwmp/src/cwmp_zlib.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/cwmp_zlib.c",
+  "output": "CMakeFiles/icwmpd.dir/cwmp_zlib.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/datamodel_interface.c.o -c /home/nidhal/Desktop/icwmp/src/datamodel_interface.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/datamodel_interface.c",
+  "output": "CMakeFiles/icwmpd.dir/datamodel_interface.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/diagnostic.c.o -c /home/nidhal/Desktop/icwmp/src/diagnostic.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/diagnostic.c",
+  "output": "CMakeFiles/icwmpd.dir/diagnostic.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/digauth.c.o -c /home/nidhal/Desktop/icwmp/src/digauth.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/digauth.c",
+  "output": "CMakeFiles/icwmpd.dir/digauth.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/download.c.o -c /home/nidhal/Desktop/icwmp/src/download.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/download.c",
+  "output": "CMakeFiles/icwmpd.dir/download.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/event.c.o -c /home/nidhal/Desktop/icwmp/src/event.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/event.c",
+  "output": "CMakeFiles/icwmpd.dir/event.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/heartbeat.c.o -c /home/nidhal/Desktop/icwmp/src/heartbeat.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/heartbeat.c",
+  "output": "CMakeFiles/icwmpd.dir/heartbeat.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/http.c.o -c /home/nidhal/Desktop/icwmp/src/http.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/http.c",
+  "output": "CMakeFiles/icwmpd.dir/http.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/log.c.o -c /home/nidhal/Desktop/icwmp/src/log.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/log.c",
+  "output": "CMakeFiles/icwmpd.dir/log.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/notifications.c.o -c /home/nidhal/Desktop/icwmp/src/notifications.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/notifications.c",
+  "output": "CMakeFiles/icwmpd.dir/notifications.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/reboot.c.o -c /home/nidhal/Desktop/icwmp/src/reboot.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/reboot.c",
+  "output": "CMakeFiles/icwmpd.dir/reboot.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/rpc.c.o -c /home/nidhal/Desktop/icwmp/src/rpc.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/rpc.c",
+  "output": "CMakeFiles/icwmpd.dir/rpc.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/sched_inform.c.o -c /home/nidhal/Desktop/icwmp/src/sched_inform.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/sched_inform.c",
+  "output": "CMakeFiles/icwmpd.dir/sched_inform.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/session.c.o -c /home/nidhal/Desktop/icwmp/src/session.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/session.c",
+  "output": "CMakeFiles/icwmpd.dir/session.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/ssl_utils.c.o -c /home/nidhal/Desktop/icwmp/src/ssl_utils.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/ssl_utils.c",
+  "output": "CMakeFiles/icwmpd.dir/ssl_utils.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/subprocess.c.o -c /home/nidhal/Desktop/icwmp/src/subprocess.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/subprocess.c",
+  "output": "CMakeFiles/icwmpd.dir/subprocess.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/ubus_utils.c.o -c /home/nidhal/Desktop/icwmp/src/ubus_utils.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/ubus_utils.c",
+  "output": "CMakeFiles/icwmpd.dir/ubus_utils.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/uci_utils.c.o -c /home/nidhal/Desktop/icwmp/src/uci_utils.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/uci_utils.c",
+  "output": "CMakeFiles/icwmpd.dir/uci_utils.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/upload.c.o -c /home/nidhal/Desktop/icwmp/src/upload.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/upload.c",
+  "output": "CMakeFiles/icwmpd.dir/upload.c.o"
+},
+{
+  "directory": "/home/nidhal/Desktop/icwmp/src/build",
+  "command": "/usr/bin/cc -D_GNU_SOURCE  -I/home/nidhal/Desktop/icwmp/src -g   -Wall -Werror -Wformat -g -o CMakeFiles/icwmpd.dir/xml.c.o -c /home/nidhal/Desktop/icwmp/src/xml.c",
+  "file": "/home/nidhal/Desktop/icwmp/src/xml.c",
+  "output": "CMakeFiles/icwmpd.dir/xml.c.o"
+}
+]

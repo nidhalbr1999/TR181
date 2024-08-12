@@ -1,0 +1,101 @@
+#!/bin/sh
+
+#created by the icwmp package
+log() {
+	echo "${@}"|logger -t firewall.cwmp -p info
+}
+
+get_firewall_zone() {
+	zone="$(uci show firewall|grep network|grep ${1}|cut -d. -f 2)"
+	zone="${zone:-wan}" # defaults to wan zone
+	echo "$zone"
+}
+
+cleanup_exiting_rules() {
+        while iptables -w 1 -nL zone_"${1}"_input --line-numbers 2>/dev/null | grep "Open_ACS_port"; do
+		rule_num="$(iptables -w 1 -nL zone_"${1}"_input --line-numbers | grep "Open_ACS_port" | head -1|awk '{print $1}')"
+		if [ -n "${rule_num}" ]; then
+			iptables -w 1 -D zone_"${1}"_input "${rule_num}";
+		fi
+	done
+        while ip6tables -w 1 -nL zone_"${1}"_input --line-numbers 2>/dev/null | grep "Open_ACS_port"; do
+		rule_num="$(ip6tables -w 1 -nL zone_"${1}"_input --line-numbers | grep "Open_ACS_port" | head -1|awk '{print $1}')"
+		if [ -n "${rule_num}" ]; then
+			ip6tables -w 1 -D zone_"${1}"_input "${rule_num}";
+		fi
+	done
+}
+
+enable="$(uci -q get cwmp.cpe.enable)"
+enable="${enable:-1}"
+
+if [ "$enable" -eq 0 ]; then
+	log "CWMP not enabled"
+	exit 0;
+fi
+
+wan="$(uci -q get cwmp.cpe.default_wan_interface)"
+wan="${wan:-wan}"
+
+zone_name="$(get_firewall_zone $wan)"
+
+port=$(uci -q get cwmp.cpe.port)
+port="${port:-7547}"
+
+incoming_rule=$(uci -q get cwmp.cpe.incoming_rule|awk '{print tolower($0)}')
+incoming_rule="${incoming_rule:-port_only}"
+
+ipaddr=$(uci -c /var/state -q get icwmp.acs.ip)
+ip6addr=$(uci -c /var/state -q get icwmp.acs.ip6)
+
+cmd="iptables -w 1 -I INPUT -p tcp"
+cmd6="ip6tables -w 1 -I INPUT -p tcp"
+
+# default incoming rule is Port only
+if [ "${incoming_rule}" = "ip_only" ]; then
+	if [ -n "${ipaddr}" ]; then
+		cmd="${cmd} -s ${ipaddr}"
+	fi
+	if [ -n "${ip6addr}" ]; then
+		cmd6="${cmd6} -s ${ip6addr}"
+	fi
+elif [ "${incoming_rule}" = "port_only" ]; then
+	if [ -n "${port}" ]; then
+		cmd="${cmd} --dport ${port}"
+		cmd6="${cmd6} --dport ${port}"
+	fi
+else
+	if [ -n "${ipaddr}" ]; then
+		cmd="${cmd} -s ${ipaddr}"
+	fi
+
+	if [ -n "${ip6addr}" ]; then
+		cmd6="${cmd6} -s ${ip6addr}"
+	fi
+
+	if [ -n "${port}" ]; then
+		cmd="${cmd} --dport ${port}"
+		cmd6="${cmd6} --dport ${port}"
+	fi
+fi
+
+cleanup_exiting_rules "${zone_name}"
+
+echo "${cmd}"|grep -q "\-\-dport \|\-s "
+if [ "$?" -eq 0 ]; then
+	cmd="${cmd} -j ACCEPT -m comment --comment=Open_ACS_port"
+	${cmd}
+	log "Applied [${cmd}]"
+fi
+
+echo "${cmd6}"|grep -q "\-\-dport \|\-s "
+if [ "$?" -eq 0 ]; then
+	cmd6="${cmd6} -j ACCEPT -m comment --comment=Open_ACS_port"
+	${cmd6}
+	log "Applied [${cmd6}]"
+fi
+
+if [ -f "/var/state/icwmp" ]; then
+	uci -c /var/state -q set icwmp.cpe.firewall_restart="init"
+	uci -c /var/state -q commit icwmp
+fi

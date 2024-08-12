@@ -1,0 +1,587 @@
+#!/bin/sh /etc/rc.common
+# Copyright (C) 2015-2019 iopsys Software Solutions AB
+
+START=99
+STOP=00
+
+USE_PROCD=1
+PROG="/usr/sbin/icwmpd"
+
+. /lib/functions.sh
+. /usr/share/libubox/jshn.sh
+include /lib/network
+
+log() {
+	echo "${@}"|logger -t cwmp.init -p info
+}
+
+regenerate_ssl_link()
+{
+	local cert_dir all_file rehash
+
+	cert_dir="${1}"
+	[ ! -d "${cert_dir}" ] && return 0;
+
+	### Generate all ssl link for pem certicates ###
+	all_file=$(ls "${cert_dir}"/*.pem 2>/dev/null)
+	if [ -n "${all_file}" ]; then
+		for cfile in $all_file; do
+			rehash="$(openssl x509 -hash -noout -in "${cfile}")"
+			[ -f "${cert_dir}"/"${rehash}".0 ] || \
+				ln -s "${cfile}" "${cert_dir}"/"${rehash}".0
+		done
+	fi
+
+	### Generate all ssl link for crt certicates ###
+	all_file=$(ls "${cert_dir}"/*.crt 2>/dev/null)
+	if [ -n "${all_file}" ]; then
+		for cfile in $all_file; do
+			rehash="$(openssl x509 -hash -noout -in "${cfile}")"
+			[ -f "${cert_dir}"/"${rehash}".0 ] || \
+				ln -s "${cfile}" "${cert_dir}"/"${rehash}".0
+		done
+	fi
+}
+
+enable_dhcp_option43() {
+	local wan="${1}"
+
+	### Ask for DHCP Option 43 only if CWMP is enabled ###
+	local reqopts="$(uci -q get network."${wan}".reqopts)"
+	local proto="$(uci -q get network."${wan}".proto)"
+	local newreqopts=""
+	local option43_present=0
+
+	for ropt in $reqopts; do
+		case $ropt in
+			43) option43_present=1 ;;
+			*) ;;
+		esac
+	done
+
+	if [ ${option43_present} -eq 1 ]; then
+		return;
+	fi
+
+	newreqopts="$reqopts 43"
+	if [ "${proto}" = "dhcp" ]; then
+		uci -q set network."${wan}".reqopts="$newreqopts"
+		uci commit network
+		ubus call network reload
+	fi
+}
+
+convert_to_hex() {
+	local val=""
+	local optval="${1}"
+	OPTIND=1
+	while getopts ":" opt "-$optval"
+	do
+		temp=$(printf "%02X" "'${OPTARG:-:}")
+		val="${val}:${temp}"
+	done
+
+	echo "${val}"
+}
+
+configure_send_op125() {
+	local sendopt="${1}"
+	local intf="${2}"
+	local uci="${3}"
+	local hex_oui=""
+	local hex_serial=""
+	local hex_class=""
+	local oui_len=0
+	local serial_len=0
+	local class_len=0
+
+	if [ "${uci}" = "network" ]; then
+		local opt125="125:00:00:0D:E9"
+	else
+		if [ -z "${sendopt}" ]; then
+			local opt125="125,00:00:0D:E9"
+		else
+			local opt125=":00:00:0D:E9"
+		fi
+	fi
+
+	config_get oui cpe manufacturer_oui "ABCDEF"
+	if [ -z "${oui}" ]; then
+		oui=$(db -q get device.deviceinfo.ManufacturerOUI)
+	fi
+
+	oui=$(echo "${oui}" | tr 'a-f' 'A-F')
+
+	config_get serial cpe serial_number "ABCDEF123456"
+	if [ -z "${serial}" ]; then
+		serial=$(db -q get device.deviceinfo.SerialNumber)
+	fi
+
+	config_get class cpe product_class "Luceor"
+	if [ -z "${class}" ]; then
+		class=$(db -q get device.deviceinfo.ProductClass)
+	fi
+
+	oui_len=$(echo -n "${oui}" | wc -m)
+	serial_len=$(echo -n "${serial}" | wc -m)
+	class_len=$(echo -n "${class}" | wc -m)
+
+	if [ "${oui_len}" -eq 0 ] || [ "${serial_len}" -eq 0 ]; then
+		return 0
+	fi
+
+	opt125_len=$((oui_len + serial_len + class_len))
+	if [ "${class_len}" -gt 0 ]; then
+		opt125_len=$((opt125_len + 6))
+	else
+		opt125_len=$((opt125_len + 4))
+	fi
+
+	hex_opt125_len=$(printf "%02X" "${opt125_len}")
+	opt125="${opt125}:${hex_opt125_len}"
+	hex_oui=$(convert_to_hex "${oui}")
+	if [ -z "${hex_oui}" ]; then
+		return 0
+	fi
+
+	hex_oui_len=$(printf "%02X" "${oui_len}")
+	if [ "${uci}" = "network" ]; then
+		opt125="${opt125}:01:${hex_oui_len}${hex_oui}"
+	else
+		opt125="${opt125}:04:${hex_oui_len}${hex_oui}"
+	fi
+
+	hex_serial=$(convert_to_hex "${serial}")
+	if [ -z "${hex_serial}" ]; then
+		return 0
+	fi
+
+	hex_serial_len=$(printf "%02X" "${serial_len}")
+	if [ "${uci}" = "network" ]; then
+		opt125="${opt125}:02:${hex_serial_len}${hex_serial}"
+	else
+		opt125="${opt125}:05:${hex_serial_len}${hex_serial}"
+	fi
+
+	if [ "${class_len}" -gt 0 ]; then
+		hex_class=$(convert_to_hex "${class}")
+		if [ -z "${hex_class}" ]; then
+			return 0
+		fi
+
+		hex_class_len=$(printf "%02X" "${class_len}")
+		if [ "${uci}" = "network" ]; then
+			opt125="${opt125}:03:${hex_class_len}${hex_class}"
+		else
+			opt125="${opt125}:06:${hex_class_len}${hex_class}"
+		fi
+	fi
+
+
+	if [ "${uci}" = "network" ]; then
+		new_send_opt="$sendopt $opt125"
+		uci -q set network."${intf}".sendopts="$new_send_opt"
+	else
+		new_send_opt="$sendopt$opt125"
+		uci -q add_list dhcp."${intf}".dhcp_option="$new_send_opt"
+	fi
+}
+
+check_for_suboptions() {
+	# Check if option 4 and 5 present inside enterprise id 3561
+	data=$(echo "${1}" | sed 's/://g')
+	len=$(printf "${data}"|wc -c)
+
+	rem_len="${len}"
+	while [ $rem_len -gt 8 ]; do
+		subopt_present=0
+
+		ent_id="${data:0:8}"
+		ent_id=$(printf "%d\n" "0x$ent_id")
+		if [ $ent_id -ne 3561 ]; then
+			len_val=${data:8:2}
+			data_len=$(printf "%d\n" "0x$len_val")
+			# add 4 byte for ent_id and 1 byte for len
+			data_len=$(( data_len * 2 + 10 ))
+			# move ahead data to next enterprise id
+			data=${data:"${data_len}":"${rem_len}"}
+			rem_len=$(( rem_len - data_len ))
+			continue
+		fi
+
+		# read the length of enterprise data
+		len_val=${data:8:2}
+		data_len=$(printf "%d\n" "0x$len_val")
+		# add 4 byte for ent_id and 1 byte for len
+		data_len=$(( data_len * 2 + 10 ))
+
+		len_val=${data:8:2}
+		opt_len=$(printf "%d\n" "0x$len_val")
+		if [ $opt_len -eq 0 ]; then
+			echo ${subopt_present}
+			return 0
+		fi
+
+		# populate the option data of enterprise id
+		sub_data_len=$(( opt_len * 2))
+		# starting 10 means ahead of length field
+		sub_data=${data:10:"${sub_data_len}"}
+
+		# parsing of suboption of option 125
+		while [ $sub_data_len -gt 0 ]; do
+			# get the suboption id
+			sub_opt_id=${sub_data:0:2}
+			sub_opt_id=$(printf "%d\n" "0x$sub_opt_id")
+			case "${sub_opt_id}" in
+			"4") subopt_present=1
+			;;
+			"5") subopt_present=1
+			;;
+			esac
+
+			if [ ${subopt_present} -eq 1 ]; then
+				break;
+			fi
+
+			# get the length of suboption
+			sub_opt_len=${sub_data:2:2}
+			sub_opt_len=$(printf "%d\n" "0x$sub_opt_len")
+			sub_opt_len=$(( sub_opt_len * 2 ))
+
+			# add 2 bytes for sub_opt id and sub_opt len field
+			sub_opt_end=$(( sub_opt_len + 4 ))
+
+			# update the remaining sub option hex string length
+			sub_data_len=$((sub_data_len - sub_opt_end))
+
+			# fetch next sub option hex string
+			sub_data=${sub_data:${sub_opt_end}:${sub_data_len}}
+		done
+
+		if [ ${subopt_present} -eq 1 ]; then
+			break;
+		else
+			# move ahead data to next enterprise id
+			rem_len=$(( rem_len - $data_len ))
+			data=${data:"${data_len}":"${rem_len}"}
+		fi
+	done
+
+	echo ${subopt_present}
+}
+
+enable_dnsmasq_option125() {
+	local lan="${1}"
+	local send125_present=0
+	local opt125="125,"
+
+	local proto="$(uci -q get dhcp."${lan}".dhcpv4)"
+	if [ "${proto}" = "server" ]; then
+		opt_list="$(uci -q get dhcp."${lan}".dhcp_option)"
+		base_opt=""
+
+		for sopt in $opt_list; do
+			if [[ "$sopt" == "$opt125"* ]]; then
+				send125_present=$(check_for_suboptions "${sopt:4}")
+				base_opt="${sopt}"
+				break
+			fi
+		done
+
+		if [ ${send125_present} -eq 0 ]; then
+			uci -q del_list dhcp."${lan}".dhcp_option="${base_opt}"
+			configure_send_op125 "${base_opt}" "${lan}" "dhcp"
+			ubus call uci commit '{"config":"dhcp"}'
+		fi
+	fi
+}
+
+set_vendor_id() {
+	local wan="${1}"
+	local proto="$(uci -q get network."${wan}".proto)"
+
+	if [ "${proto}" = "dhcp" ]; then
+		vendorid="$(uci -q get network."${wan}".vendorid)"
+		if [ -z "${vendorid}" ]; then
+			uci -q set network."${wan}".vendorid="dslforum.org"
+			ubus call uci commit '{"config":"network"}'
+		elif [[ $vendorid != *"dslforum.org"* ]]; then
+			uci -q set network."${wan}".vendorid="${vendorid},dslforum.org"
+			ubus call uci commit '{"config":"network"}'
+		fi
+	fi
+}
+
+enable_dhcp_option125() {
+	local wan="${1}"
+	local reqopts="$(uci -q get network."${wan}".reqopts)"
+	local sendopts="$(uci -q get network."${wan}".sendopts)"
+	local proto="$(uci -q get network."${wan}".proto)"
+	local newreqopts=""
+	local newsendopts=""
+	local req125_present=0
+	local send125_present=0
+	local network_uci_update=0
+	local opt125="125:"
+
+	for ropt in $reqopts; do
+		case $ropt in
+			125) req125_present=1 ;;
+			*) ;;
+		esac
+	done
+
+	for sopt in $sendopts; do
+		if [[ "$sopt" == "$opt125"* ]]; then
+			send125_present=1
+			break
+		fi
+	done
+
+	if [ "${proto}" = "dhcp" ]; then
+		if [ ${req125_present} -eq 0 ]; then
+			newreqopts="$reqopts 125"
+			uci -q set network."${wan}".reqopts="$newreqopts"
+			network_uci_update=1
+		fi
+
+		if [ ${send125_present} -eq 0 ]; then
+			configure_send_op125 "${sendopts}" "${wan}" "network"
+			network_uci_update=1
+		fi
+	fi
+
+	if [ ${network_uci_update} -eq 1 ]; then
+		uci commit network
+		ubus call network reload
+	fi
+}
+
+wait_for_resolvfile() {
+	local time=$1
+	local tm=1
+
+	local resolvfile="$(uci -q get dhcp.@dnsmasq[0].resolvfile)"
+	[ -n "$resolvfile" ] || return
+
+	while [ ! -f "$resolvfile" ]; do
+		sleep 1
+		[ "$tm" -ge "$time" ] && break
+		tm=$((tm+1))
+	done
+}
+
+copy_cwmp_etc_files_to_varstate() {
+	mkdir -p /var/run/icwmpd
+
+	if [ -f /etc/icwmpd/icwmpd_backup_session.xml ]; then
+		cp -f /etc/icwmpd/icwmpd_backup_session.xml /var/run/icwmpd/ 2>/dev/null
+	fi
+
+	if [ -f /etc/icwmpd/dm_enabled_notify.xml ]; then
+		cp -f /etc/icwmpd/dm_enabled_notify /var/run/icwmpd/ 2>/dev/null
+	fi
+}
+
+copy_cwmp_varstate_files_to_etc() {
+	if [ -f /var/run/icwmpd/icwmpd_backup_session.xml ]; then
+		cp -f /var/run/icwmpd/icwmpd_backup_session.xml /etc/icwmpd/ 2>/dev/null
+	fi
+
+	if [ -f /var/run/icwmpd/dm_enabled_notify.xml ]; then
+		cp -f /var/run/icwmpd/dm_enabled_notify /etc/icwmpd/ 2>/dev/null
+	fi
+
+	# move the successful custom notify import marker to persistent storage
+	if [ -f /var/run/icwmpd/icwmpd_notify_import_marker ]; then
+		cp -f /var/run/icwmpd/icwmpd_notify_import_marker /etc/icwmpd/
+	fi
+}
+
+validate_acs_section()
+{
+	uci_validate_section cwmp acs "acs" \
+		'passwd:string' \
+		'periodic_inform_enable:bool' \
+		'periodic_inform_interval:uinteger' \
+		'periodic_inform_time:string' \
+		'url:string' \
+		'dhcp_discovery:string' \
+		'skip_dhcp_boot_options:bool:0' \
+		'dhcp_url:string' \
+		'compression:or("GZIP","Deflate","Disabled")' \
+		'retry_min_wait_interval:range(1, 65535)' \
+		'retry_interval_multiplier:range(1000, 65535)' \
+		'ssl_capath:string'
+
+}
+
+validate_cpe_section()
+{
+	uci_validate_section cwmp cpe "cpe" \
+		'interface:string' \
+		'default_wan_interface:string' \
+		'log_to_console:or("enable","disable")' \
+		'log_to_file:or("enable","disable")' \
+		'log_severity:or("EMERG", "ALERT", "CRITIC" ,"ERROR", "WARNING", "NOTICE", "INFO", "DEBUG")' \
+		'log_file_name:string' \
+		'log_max_size:uinteger' \
+		'userid:string' \
+		'passwd:string' \
+		'port:uinteger' \
+		'provisioning_code:string:""' \
+		'amd_version:range(1, 6)' \
+		'instance_mode:or("InstanceNumber","InstanceAlias")' \
+		'session_timeout:uinteger' \
+		'notification:bool' \
+		'exec_download:bool' \
+		'periodic_notify_enable:bool' \
+		'enable:bool:1' \
+		'periodic_notify_interval:uinteger' \
+		'fw_upgrade_keep_settings:bool'
+}
+
+validate_defaults() {
+	local ssl_capath enable url dhcp_url
+
+	config_load cwmp
+
+	validate_acs_section || {
+		log "Validation of acs section failed"
+		return 1;
+	}
+
+	if [ -z "${url}" ] && [ -z "${dhcp_url}" ]; then
+		log "No ACS URL is configured"
+		return 1
+	fi
+
+	ssl_capath="${ssl_capath%/}"
+	# Put the cert pem file in keep list
+	if [ -d "${ssl_capath}" ]; then
+		if ! grep "*.pem\|*.crt" /lib/upgrade/keep.d/icwmp; then
+			echo "${ssl_capath}"'/*.pem' >> /lib/upgrade/keep.d/icwmp
+			echo "${ssl_capath}"'/*.crt' >> /lib/upgrade/keep.d/icwmp
+			echo "${ssl_capath}"'/*.0' >> /lib/upgrade/keep.d/icwmp
+		fi
+	fi
+
+	validate_cpe_section || {
+		log "Validation of cpe section failed"
+		return 1;
+	}
+
+	if [ "$enable" = "0" ]; then
+		log "CWMP service disabled"
+		return 1
+	fi
+
+	return 0;
+}
+
+boot() {
+	local dhcp_discovery wan_interface skip_dhcp_boot_options disable_gatewayinfo
+
+	config_load cwmp
+	config_get wan_interface cpe default_wan_interface "wan"
+	config_get disable_gatewayinfo cpe disable_gatewayinfo "0"
+
+	config_get dhcp_discovery acs dhcp_discovery "0"
+	config_get dhcp_discovery acs dhcp_discovery "0"
+	config_get skip_dhcp_boot_options acs skip_dhcp_boot_options "0"
+
+	if [ "${dhcp_discovery}" = "enable" ] || [ "${dhcp_discovery}" = "1" ]; then
+		if [ "${skip_dhcp_boot_options}" -ne 1 ]; then
+			# Set dhcp option 43 if not already configured
+			enable_dhcp_option43 "${wan_interface}"
+			# Set dhcp option 60
+			set_vendor_id "${wan_interface}"
+		fi
+	fi
+
+	config_get lan_interface cpe default_lan_interface ""
+	if [ -n "${lan_interface}" ]; then
+		if [ "${disable_gatewayinfo}" -ne 1 ]; then
+			# Set dhcp_option 125 if not already configured
+			enable_dhcp_option125 "${wan_interface}"
+			enable_dnsmasq_option125 "${lan_interface}"
+		fi
+	fi
+	
+	config_get ssl_capath acs ssl_capath
+
+	if [ -n "${ssl_capath}" ]; then
+		regenerate_ssl_link "${ssl_capath}"
+	fi
+
+	# Copy backup data so that if it restart latter on, it gets the info
+	copy_cwmp_etc_files_to_varstate
+	mkdir -p /var/run/icwmpd/
+	touch /var/run/icwmpd/cwmp
+
+	start
+}
+
+start_service() {
+
+	procd_open_instance icwmp
+
+	validate_defaults || {
+		log "Validation of defaults failed"
+		procd_close_instance
+		return 1;
+	}
+
+	procd_set_param command "$PROG"
+	procd_append_param command -b
+
+	procd_set_param respawn \
+		"${respawn_threshold:-5}" \
+		"${respawn_timeout:-10}" "${respawn_retry:-3}"
+
+	procd_close_instance
+}
+
+stop_service()
+{
+	copy_cwmp_varstate_files_to_etc
+}
+
+reload_service() {
+	local ret
+
+	log "Reload service $ret"
+	ret="0"
+
+	validate_defaults || {
+		stop
+		start
+		return 0;
+	}
+
+	ret=$(ubus call service list '{"name":"icwmpd"}' | jsonfilter -qe '@.icwmpd.instances.icwmp.running')
+	if [ "$ret" != "true" ]; then
+		log "Reloading cwmp service ..."
+		stop
+		start
+		return 0
+	fi
+
+	tr069_status="$(ubus -t 1 call tr069 status)"
+	ret="$?"
+	if [ "$ret" = "7" ]; then
+		# ubus timed out may be due to uloop is busy in some task so return
+		log "Skipping ubus reload due to ubus timeout"
+		return 0
+	fi
+
+	status="$(echo "${tr069_status}" | jsonfilter -qe '@.cwmp.status')"
+	if [ "$status" = "up" ]; then
+		ubus -t 1 call tr069 command '{"command":"reload"}'
+	fi
+}
+
+service_triggers() {
+       procd_add_reload_trigger "cwmp"
+}
+

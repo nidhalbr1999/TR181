@@ -1,0 +1,8 @@
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/icwmpd.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/copy_daemon_target.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/edit_cache.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/rebuild_cache.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/list_install_components.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/install.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/install/local.dir
+/home/nidhal/Desktop/icwmp/src/build/CMakeFiles/install/strip.dir

@@ -1,0 +1,52 @@
+config acs 'acs'
+	option userid '' #$OUI-$SER
+	option passwd 'iopsys'
+	option url 'http://192.168.1.178:7547/'
+	option periodic_inform_enable 'true'
+	option periodic_inform_interval '1800'
+	option periodic_inform_time '0001-01-01T00:00:00Z'
+	option dhcp_discovery 'enable'
+	option ssl_capath "/etc/ssl/certs"
+	# compression possible configs: GZIP, Deflate, Disabled
+	option compression 'Disabled'
+	#­ possible configs interval :[1:65535]
+	option retry_min_wait_interval '5'
+	#­ possible configs interval :[1000:65535]
+	option retry_interval_multiplier '2000'
+	option skip_dhcp_boot_options '0'
+
+config cpe 'cpe'
+	option enable '1'
+	option default_wan_interface 'lan'
+	option default_lan_interface 'wan'
+	option log_to_console 'disable'
+	option log_to_file 'disable'
+	# log_severity: INFO (Default)	
+	# log_severity possible configs: EMERG, ALERT, CRITIC ,ERROR, WARNING, NOTICE, INFO, DEBUG
+	option log_severity 'ERROR'
+	option log_file_name '/var/log/icwmpd.log'
+	option log_max_size '102400'
+	option userid '' #$OUI-$SER
+	option passwd 'iopsys'
+	option port '7547'
+	option provisioning_code ''
+	option amd_version '5'
+	# compression possible configs: InstanceNumber, InstanceAlias
+	option instance_mode 'InstanceNumber'
+	option session_timeout '300'
+	option notification '1'
+	option exec_download '0'
+	option periodic_notify_enable '1'
+	option periodic_notify_interval '10'
+	option incoming_rule 'Port_Only'
+	option active_notif_throttle '0'
+	option disable_gatewayinfo '0'
+	option fw_upgrade_keep_settings '1'
+	option manufacturer_oui 'ABCDEF'
+	option serial_number 'ABCDEF123456'
+	option product_class 'Luceor'
+	
+config lwn 'lwn'
+	option enable '0'
+	option hostname ''
+	option port '0'

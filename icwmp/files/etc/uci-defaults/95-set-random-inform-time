@@ -1,0 +1,20 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+set_inform_time()
+{
+	local sec inform_time value
+
+	config_load cwmp
+	config_get inform_time acs periodic_inform_time '0001-01-01T00:00:00Z'
+
+	if [ "${inform_time}" == "0001-01-01T00:00:00Z" ]; then
+		sec=$(date +%s)
+		value="$(date -d @$(($sec-$RANDOM)) +%Y-%m-%dT%H:%M:%SZ)"
+
+		uci_set cwmp acs periodic_inform_time "$value"
+	fi
+}
+
+set_inform_time

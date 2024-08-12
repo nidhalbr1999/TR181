@@ -1,0 +1,139 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+CLASS="Luceor"
+OUI="ABCDEF"
+SERIAL="ABCDEF123456"
+
+get_vivsoi() {
+	# opt125 environment variable has data in below format
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	# |	 enterprise-number1	  |
+	# |				  |
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+	# |   data-len1   |		  |
+	# +-+-+-+-+-+-+-+-+ option-data1  |
+	# /				  /
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ -----
+	# |	 enterprise-number2	  |   ^
+	# |				  |   |
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   |
+	# |   data-len2   |		  | optional
+	# +-+-+-+-+-+-+-+-+ option-data2  |   |
+	# /				  /   |
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+   |
+	# ~	       ...		  ~   V
+	# +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+ -----
+
+	#  Enterprise Id  Len  Sub Op  SLen  Data Sub Op  SLen Data	  Sub Op  SLen Data
+	# +-------------+-----+------+------+----+------+-----+----+-----+------+-----+----+
+	# |	id    |  n  |	1  |  n1  | D1 |   2  |  n2 | D2 | ... |   6  |  n6 | D6 |
+	# +-------------+-----+------+------+----+------+-----+----+-----+------+-----+----+
+
+	local opt125="$1"
+	local len="$2"
+	local ent_id
+
+	#hex-string 2 character=1 Byte
+	# length in hex string will be twice of actual Byte length
+	[ "$len" -gt "8" ] || return
+
+	data="${opt125}"
+	rem_len="${len}"
+	while [ $rem_len -gt 0 ]; do
+		ent_id=${data:0:8}
+		ent_id=$(printf "%d\n" "0x$ent_id")
+
+		if [ $ent_id -ne  3561 ]; then
+			len_val=${data:8:2}
+			data_len=$(printf "%d\n" "0x$len_val")
+			# add 4 byte for ent_id and 1 byte for len
+			data_len=$(( data_len * 2 + 10 ))
+			# move ahead data to next enterprise id
+			data=${data:"${data_len}":"${rem_len}"}
+			rem_len=$(( rem_len - $data_len ))
+			continue
+		fi
+
+		# read the length of enterprise data
+		len_val=${data:8:2}
+		data_len=$(printf "%d\n" "0x$len_val")
+		# add 4 byte for ent_id and 1 byte for len
+		data_len=$(( data_len * 2 + 10 ))
+
+		opt_len=$(printf "%d\n" "0x$len_val")
+		[ $opt_len -eq 0 ] && return
+
+		# populate the option data of enterprise id
+		sub_data_len=$(( opt_len * 2))
+		# starting 10 means ahead of length field
+		sub_data=${data:10:"${sub_data_len}"}
+
+		# parsing of suboption of option 125
+		while [ $sub_data_len -gt 0 ]; do
+			# get the suboption id
+			sub_opt_id=${sub_data:0:2}
+			sub_opt_id=$(printf "%d\n" "0x$sub_opt_id")
+
+			# get the length of suboption
+			sub_opt_len=${sub_data:2:2}
+			sub_opt_len=$(printf "%d\n" "0x$sub_opt_len")
+			sub_opt_len=$(( sub_opt_len * 2 ))
+
+			# get the value of sub option starting 4 means starting after length
+			sub_opt_val=${sub_data:4:${sub_opt_len}}
+
+			# assign the value found in sub option
+			case "${sub_opt_id}" in
+				"4") OUI=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+				"5") SERIAL=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+				"6") CLASS=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+			esac
+
+			# add 2 bytes for sub_opt id and sub_opt len field
+			sub_opt_end=$(( sub_opt_len + 4 ))
+
+			# update the remaining sub option hex string length
+			sub_data_len=$((sub_data_len - sub_opt_end))
+
+			# fetch next sub option hex string
+			sub_data=${sub_data:${sub_opt_end}:${sub_data_len}}
+		done
+
+		# move ahead data to next enterprise id
+		data=${data:"${data_len}":"${rem_len}"}
+		rem_len=$(( rem_len - data_len ))
+	done
+}
+
+config_load cwmp
+config_get_bool enable_cwmp cpe enable 1
+config_get wan_intf cpe default_wan_interface "wan"
+
+if [ "$enable_cwmp" = "0" ]; then
+	return 0
+fi
+
+if [ "${wan_intf}" == "${INTERFACE}" ]; then
+	if [ -n "$opt125" ]; then
+		len=$(printf "$opt125"|wc -c)
+		get_vivsoi "$opt125" "$len"
+	fi
+
+	mkdir -p /var/state
+	touch /var/state/icwmp
+	sec=$(uci -q -c /var/state get icwmp.gatewayinfo)
+	if [ -z "${sec}" ]; then
+		sec=$(uci -q -c /var/state add icwmp gatewayinfo)
+		uci -q -c /var/state rename icwmp."${sec}"="gatewayinfo"
+	fi
+
+	uci -q -c /var/state set icwmp.gatewayinfo.class="$CLASS"
+	uci -q -c /var/state set icwmp.gatewayinfo.oui="$OUI"
+	uci -q -c /var/state set icwmp.gatewayinfo.serial="$SERIAL"
+	uci -q -c /var/state commit icwmp
+fi

@@ -1,0 +1,141 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+DHCP_ACS_URL=""
+DHCP_PROV_CODE=""
+MIN_WAIT_INVL=""
+INVL_MULTIPLIER=""
+
+log() {
+	echo "$@" |logger -t cwmp.update -p info
+}
+
+get_opt43() {
+	# Check if option value is in encapsulated form
+	local opt43="$1"
+	local len="$2"
+
+	[ "$len" -gt "2" ] || return
+
+	first_byte=${opt43:0:2}
+	first_byte=$(printf "%d\n" "0x$first_byte")
+
+	if [ $len -ge 4 ] && [ $first_byte -ge 1 ] && [ $first_byte -le 4 ]; then
+		# it is in encapsulated form
+		# opt43 encapsulated vendor-specific option has data in below format
+		#  Code   Len   Data item        Code   Len   Data item        Code
+		# +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+		# |  T1 |  n  |  d1 |  d2 | ... |  T2 |  n  |  D1 |  D2 | ... | ... |
+		# +-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+-----+
+
+		#hex-string 2 character=1 Byte
+		# length in hex string will be twice of actual Byte length
+
+		data="${opt43}"
+		rem_len="${len}"
+		# parsing of suboption of option 43
+		while [ $rem_len -gt 0 ]; do
+			# get the suboption id
+			sub_opt_id=${data:0:2}
+			sub_opt_id=$(printf "%d\n" "0x$sub_opt_id")
+
+			# get the length of suboption
+			sub_opt_len=${data:2:2}
+			sub_opt_len=$(printf "%d\n" "0x$sub_opt_len")
+			sub_opt_len=$(( sub_opt_len * 2 ))
+
+			# get the value of sub option starting 4 means starting after length
+			sub_opt_val=${data:4:${sub_opt_len}}
+
+			# assign the value found in sub option
+			case "${sub_opt_id}" in
+				"1") DHCP_ACS_URL=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+				"2") DHCP_PROV_CODE=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+				"3") MIN_WAIT_INVL=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+				"4") INVL_MULTIPLIER=$(echo -n $sub_opt_val | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+				;;
+			esac
+
+			# add 2 bytes for sub_opt id and sub_opt len field
+			sub_opt_end=$(( sub_opt_len + 4 ))
+
+			# fetch next sub option hex string
+			data=${data:${sub_opt_end}:${len}}
+
+			# update the remaining sub option hex string length
+			rem_len=$((rem_len - sub_opt_end))
+		done
+	else
+		DHCP_ACS_URL=$(echo -n $opt43 | sed 's/\([0-9A-F]\{2\}\)/\\\\\\x\1/gI' | xargs printf && echo '')
+	fi
+}
+
+config_load cwmp
+config_get wan_intf cpe default_wan_interface "wan"
+config_get dhcp_discovery acs dhcp_discovery "0"
+config_get dhcp_url acs dhcp_url "192.168.10.11"
+config_get min_wait_intvl acs dhcp_retry_min_wait_interval "0"
+config_get intvl_multi acs dhcp_retry_interval_multiplier "0"
+
+config_change=0
+discovery_enable=0
+
+if [ "$dhcp_discovery" = "1" ] || [ "$dhcp_discovery" = "true" ] || [ "$dhcp_discovery" = "enable" ]; then
+	discovery_enable=1
+fi
+
+if [ "$discovery_enable" = "0" ]; then
+	return 0
+fi
+
+if [ "${wan_intf}" == "${INTERFACE}" ]; then
+	if [ -n "$opt43" ]; then
+		len=$(printf "$opt43"|wc -c)
+		get_opt43 "$opt43" "$len"
+	fi
+
+	if [ -z "$DHCP_ACS_URL" ]; then
+		return 0
+	fi
+
+	sec=$(uci -q get cwmp.acs)
+
+	if [ -z "${sec}" ]; then
+		return 0
+	fi
+
+	if [ "${dhcp_url}" != "${DHCP_ACS_URL}" ]; then
+		uci -q set cwmp.acs.dhcp_url="$DHCP_ACS_URL"
+		config_change=1
+	fi
+
+	if [ -n "$MIN_WAIT_INVL" ] && [ "${MIN_WAIT_INVL}" != "${min_wait_intvl}" ]; then
+		uci -q set cwmp.acs.dhcp_retry_min_wait_interval="$MIN_WAIT_INVL"
+		config_change=1
+	fi
+
+	if [ -n "$INVL_MULTIPLIER" ] && [ "${INVL_MULTIPLIER}" != "${intvl_multi}" ]; then
+		uci -q set cwmp.acs.dhcp_retry_interval_multiplier="$INVL_MULTIPLIER"
+		config_change=1
+	fi
+
+	sec=$(uci -q get cwmp.cpe)
+
+	if [ -n "${sec}" ] && [ -n "$DHCP_PROV_CODE" ]; then
+		uci -q set cwmp.cpe.dhcp_provisioning_code="$DHCP_PROV_CODE"
+		config_change=1
+	fi
+
+	if [ $config_change -eq 0 ]; then
+		return 0
+	fi
+
+	# ACS url has been set, inform icwmpd to reload new configuration
+	sleep 10 # wait for some time to avoid interface fluctuation
+
+	ubus call uci commit '{"config":"cwmp"}'
+fi
