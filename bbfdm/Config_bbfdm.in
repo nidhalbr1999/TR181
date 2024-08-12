@@ -1,0 +1,19 @@
+config BBF_VENDOR_LIST
+	string "Vendor List"
+	default "iopsys"
+
+config BBF_VENDOR_PREFIX
+	string "Vendor Prefix"
+	default "X_IOPSYS_EU_"
+
+config BBF_TR143
+	bool "Enable TR-143 Data Model Support"
+	default n
+
+config BBF_TR471
+	bool "Enable TR-471 Data Model Support"
+	default n
+
+config BBF_MAX_OBJECT_INSTANCES
+	int "Maximum number of instances per object"
+	default 255

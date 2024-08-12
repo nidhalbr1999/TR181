@@ -1,0 +1,17 @@
+#!/bin/sh
+
+[ "$ACTION" = "ifup" ] || exit 0
+
+apply_sysctl_configuration() {
+        local sysctl_conf
+
+        sysctl_conf="/etc/bbfdm/sysctl.conf"
+
+        [ -f "${sysctl_conf}" ] || touch "${sysctl_conf}"
+
+        sysctl -e -p "${sysctl_conf}" >&-
+}
+
+
+ubus -t 10 wait_for network.device
+apply_sysctl_configuration

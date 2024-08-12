@@ -1,0 +1,12 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+        delete firewall.port_hook
+        set firewall.port_hook=include
+        set firewall.port_hook.path=/etc/firewall.portmap
+        set firewall.port_hook.reload=1
+        commit firewall
+EOT
+
+exit 0
+

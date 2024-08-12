@@ -1,0 +1,62 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+bbfdm_sysctl_conf="/etc/bbfdm/sysctl.conf"
+
+update_device_section() {
+	local section="${1}"
+	local dev_name="${2}"
+	local ipv6="${3}"
+	local name
+
+	# Get name value
+	config_get name "${section}" name
+
+	# Retrun if the name value is different to the dev_name value
+	[ "${name}" != "${dev_name}" ] && return
+	
+	if [ "${ipv6}" = "0" ]; then
+		ipv6="1"
+	else
+		ipv6="0"
+	fi
+
+	# Add ipv6 option
+	uci -q set network.${section}.ipv6="${ipv6}"
+}
+
+parse_bbfdm_sysctl_conf_file() {
+	# Check if the file exists
+	[ -f "${bbfdm_sysctl_conf}" ] || return
+
+	# Create a temporary file
+	tmpfile=$(mktemp)
+
+	# Load network config
+	config_load network
+
+	# Read each line of the file
+	while read -r line; do
+		if echo "$line" | grep -Eq '^net\.ipv6\.conf\.(.+)\.disable_ipv6=([0-1])$'; then
+			name=$(echo "$line" | sed -n 's/^net\.ipv6\.conf\.\(.*\)\.disable_ipv6=[0-1]$/\1/p')
+			value=$(echo "$line" | sed -n 's/^net\.ipv6\.conf\.\(.*\)\.disable_ipv6=\([0-1]\)$/\2/p')
+
+			config_foreach update_device_section device "${name}" "${value}"
+		else
+			# If the line doesn't match, preserve it in the temporary file
+			echo "$line" >> "$tmpfile"
+		fi
+	done < "${bbfdm_sysctl_conf}"
+
+	# Replace the original file with the modified content
+	mv "$tmpfile" "${bbfdm_sysctl_conf}"
+
+	# Apply the changes
+	uci commit network
+	sysctl -e -p "${bbfdm_sysctl_conf}" >&-
+}
+
+parse_bbfdm_sysctl_conf_file
+
+exit 0

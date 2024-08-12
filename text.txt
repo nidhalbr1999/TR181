@@ -1,0 +1,65 @@
+//********//used usually//***********//
+./scripts/feeds update -a && ./scripts/feeds install -a
+
+make -j1 V=s
+
+ssh root@ip
+
+scp -O tr181.json root@192.168.1.251:/etc/bbfdm/json/
+
+distclean
+
+./scripts/feeds install icwmp-devel
+
+make ./package/feeds/packages/icwmp-devel/compile 
+
+tftpboot openwrt-ipq40xx-generic-wallys_dr40x9-squashfs-nand-factory.ubi
+
+logread | grep easycwmpd
+
+grep -r "data model" ./
+
+find ./feeds/packages -type f -name "CMakeLists.txt"
+
+find ./ -type d -path '*/usr/sbin'
+
+scp -O libbbfdm_1.7.23_arm_cortex-a7_neon-vfpv4.ipk root@192.168.1.177:/tmp/
+
+opkg install --force-reinstall /tmp/libbbfdm_1.7.23_arm_cortex-a7_neon-vfpv4.ipk
+
+//*********************************************//
+
+//********//docker//***********//
+
+docker-compose up -d
+
+docker volume ls  // docker volume rm <>
+
+//*********************************************//
+
+cmake -S ./ -B ./build
+
+netstat -nlp
+
+cp .config.old .config
+
+
+//*****************//modify//***********************//
+ip preinit : package/base-files/files/bin (generator)
+dhcp : package/network/service/dnsmasq
+
+//*********************************************//
+
+//*******************//Debug//**********************//
+
+file
+
+https://opensource.com/article/20/4/linux-binary-analysis
+
+
+//*********************************************//
+
+
+dmesg => kernel messages
+
+

@@ -1,0 +1,18 @@
+#!/bin/sh
+. /lib/functions.sh
+
+remove_nonexisting_microservice() {
+	local input_json
+
+	config_get input_json "$1" input_json ""
+
+	if [ -z "${input_json}" ]; then
+		uci_remove bbfdm "${1}"
+	fi
+}
+
+config_load bbfdm
+config_foreach remove_nonexisting_microservice "micro_service"
+
+exit 0
+

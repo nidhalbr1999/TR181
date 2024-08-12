@@ -1,0 +1,76 @@
+#!/bin/sh /etc/rc.common
+
+START=65
+STOP=10
+
+USE_PROCD=1
+PROG=/usr/sbin/bbfdmd
+
+BBFDM_JSON_INPUT="/etc/bbfdm/input.json"
+BBFDM_TEMP_JSON="/tmp/bbfdm/input.json"
+
+log() {
+	echo "${@}"|logger -t bbfdmd.init -p info
+}
+
+validate_bbfdm_bbfdmd_section()
+{
+	uci_validate_section bbfdm bbfdmd "bbfdmd" \
+		'enabled:bool:true' \
+		'sock:string' \
+		'debug:bool:false' \
+		'loglevel:uinteger:1' \
+		'refresh_time:uinteger:0' \
+		'transaction_timeout:uinteger:30' \
+		'subprocess_level:uinteger'
+}
+
+configure_bbfdmd()
+{
+	local enabled debug sock update
+	local jlog jrefresh jtimeout jlevel
+
+	update=0
+	config_load bbfdm
+	validate_bbfdm_bbfdmd_section || {
+		log "Validation of bbfdmd section failed"
+		return 1;
+	}
+
+	[ "${enabled}" -eq 0 ] && return 0
+
+	if [ -f "${BBFDM_JSON_INPUT}" ]; then
+		echo "$(jq --arg log ${loglevel} --arg tran ${transaction_timeout} --arg refresh ${refresh_time} --arg level ${subprocess_level} '.daemon.config += {"loglevel": $log, "refresh_time": $refresh, "transaction_timeout": $tran, "subprocess_level": $level}' ${BBFDM_JSON_INPUT})" > ${BBFDM_TEMP_JSON}
+	fi
+
+	procd_set_param command ${PROG}
+	if [ "${debug}" -eq 1 ]; then
+		procd_set_param stdout 1
+		procd_set_param stderr 1
+	fi
+
+	if [ -f "${sock}" ]; then
+		procd_append_param command -s "${sock}"
+	fi
+}
+
+start_service()
+{
+	mkdir -p /tmp/bbfdm
+	procd_open_instance "bbfdm"
+	configure_bbfdmd
+	procd_set_param respawn
+	procd_close_instance "bbfdm"
+
+	ubus call service state '{"name":"bbfdm.services", "spawn":true}'
+}
+
+stop_service()
+{
+	ubus call service state '{"name":"bbfdm.services", "spawn":false}'
+}
+
+service_triggers()
+{
+	procd_add_reload_trigger "bbfdm"
+}

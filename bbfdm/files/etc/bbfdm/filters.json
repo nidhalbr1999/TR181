@@ -1,0 +1,38 @@
+{
+        "WiFi": [
+                {
+                	"dmmap": "dmmap_wireless",
+                	"section_type": "wifi-device",
+                	"option_name": "section_name",
+                	"option_value": "radio0"
+                },
+                {
+                	"dmmap": "dmmap_wireless",
+                	"section_type": "wifi-device",
+                	"option_name": "section_name",
+                	"option_value": "radio1"
+                },
+                {
+                	"dmmap": "dmmap_wireless",
+                	"section_type": "ssid",
+                	"option_name": "ap_section_name",
+                	"option_value": "default_radio0"
+                }
+                ],
+        "Ethernet": [
+                {
+                	"dmmap": "dmmap_ethernet",
+                	"section_type": "interface",
+                	"option_name": "ethernet_iface_name",
+                	"option_value": "lan"
+                },
+                {
+                	"dmmap": "dmmap_ethernet",
+                	"section_type": "interface",
+                	"option_name": "ethernet_iface_name",
+                	"option_value": "wan"
+                }
+                ]
+}
+
+

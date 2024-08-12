@@ -1,0 +1,18 @@
+#!/bin/sh
+
+UNIFIED_PATH="/etc/bbfdm/plugins/"
+
+# Link JSON plugins
+for f in `ls -1 /etc/bbfdm/json/*.json`; do
+	echo "# BBFDM JSON plugin ${f} not aligned #"
+	ln -s ${f} "${UNIFIED_PATH}"
+done
+
+# Link DotSo plugins
+for f in `ls -1 /usr/lib/bbfdm/*.so`; do
+	echo "# BBFDM DotSO plugin ${f} not aligned #"
+	ln -s ${f} "${UNIFIED_PATH}"
+done
+
+exit 0
+

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+uci -q batch <<-EOT
+        delete firewall.service_hook
+        set firewall.service_hook=include
+        set firewall.service_hook.path=/etc/firewall.service
+        set firewall.service_hook.reload=1
+        commit firewall
+EOT
+
+exit 0
+

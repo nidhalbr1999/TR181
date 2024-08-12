@@ -1,0 +1,24 @@
+#!/bin/sh
+
+BBF_DIAG_SCRIPTS="/usr/share/bbfdm/bbf_diag"
+
+. /usr/share/libubox/jshn.sh
+
+case "$1" in
+	list)
+		json_init
+
+		for file in "${BBF_DIAG_SCRIPTS}"/*; do
+			[ -f "${file}" ] || continue
+
+			. "${file}" "${1}"
+		done
+
+		json_dump
+	;;
+	call)
+		# Read the arguments
+		read -r input
+		sh "${BBF_DIAG_SCRIPTS}/${2}" "${input}"
+	;;
+esac

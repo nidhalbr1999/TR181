@@ -1,0 +1,47 @@
+#!/bin/sh
+
+UCI_GET="uci -q get"
+UCI_SET="uci -q set"
+UCI_ADD="uci -q add"
+UCI_DELETE="uci -q delete"
+UCI_COMMIT="uci -q commit"
+UCI_SHOW="uci -q show"
+
+UCI_GET_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap get"
+UCI_SET_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap set"
+UCI_ADD_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap add"
+UCI_DELETE_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap delete"
+UCI_RENAME_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap rename"
+UCI_COMMIT_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap commit"
+UCI_SHOW_BBF_DMMAP="uci -q -c /etc/bbfdm/dmmap show"
+
+uci_get() {
+	val=$($UCI_GET "${1}")
+	echo "${val:-$2}"
+}
+
+uci_get_bbf_dmmap() {
+	val=$($UCI_GET_BBF_DMMAP "${1}")
+	echo "${val:-$2}"
+}
+
+get_ip_addr_used() {
+	protocol=$1
+	interface=$2
+
+	if [ "$protocol" = "IPv6" ]; then
+		if [ -n "$interface" ]; then
+			ip_addr_used=$(ifstatus "$interface" | jsonfilter -e '@["ipv6-address"][0].address')
+		else
+			ip_addr_used=$(ip -6 route | grep default | awk -F ' ' '{print $3}' | head -n 1)
+		fi
+	else
+		if [ -n "$interface" ]; then
+			ip_addr_used=$(ifstatus "$interface" | jsonfilter -e '@["ipv4-address"][0].address')
+		else
+			ip_addr_used=$(ip route | grep default | awk -F ' ' '{print $9}')
+		fi
+	fi
+	
+	echo "${ip_addr_used}"
+}

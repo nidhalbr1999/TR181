@@ -1,0 +1,8 @@
+
+config bbfdmd 'bbfdmd'
+	option enabled '1'
+	option loglevel '1'
+	option refresh_time '10'
+	option transaction_timeout '30'
+	option subprocess_level '2'
+

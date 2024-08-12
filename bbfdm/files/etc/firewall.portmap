@@ -1,0 +1,74 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+log() {
+	echo "${@}"|logger -t firewall.dnat -p info
+}
+
+exec_cmd() {
+	if ! eval "$*"; then
+		log "Failed to run [$*]"
+	fi
+}
+
+reorder_dnat_rules() {
+	nat_chains=$(iptables -t nat -S | grep -E "^-N zone[a-zA-Z0-9_]+prerouting$" | cut -d' ' -f 2)
+
+	for chain in ${nat_chains}; do
+		# Collect empty remote host & empty dport rules
+		EMPTY_HOST_PORT=$(iptables -t nat -S ${chain} | grep -E "REDIRECT|DNAT" | grep -v "\-\-dport" | grep -v "\-s ")
+		if [ -n "${EMPTY_HOST_PORT}" ]; then
+			echo "${EMPTY_HOST_PORT}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd | sed 's/-A /-D /g')"
+				exec_cmd $cmd1
+			done
+		fi
+
+		# Collect empty remote host but non empty dport rules
+		EMPTY_HOST=$(iptables -t nat -S ${chain} | grep -E "REDIRECT|DNAT" | grep "\-\-dport" | grep -v "\-s ")
+		if [ -n "${EMPTY_HOST}" ]; then
+			echo "${EMPTY_HOST}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd | sed 's/-A /-D /g')"
+				exec_cmd $cmd1
+			done
+		fi
+
+		# Collect non empty remote host but empty dport rules
+		EMPTY_PORT=$(iptables -t nat -S ${chain} | grep -E "REDIRECT|DNAT" | grep -v "\-\-dport" | grep "\-s ")
+		if [ -n "${EMPTY_PORT}" ]; then
+			echo "${EMPTY_PORT}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd | sed 's/-A /-D /g')"
+				exec_cmd $cmd1
+			done
+		fi
+
+		# Now add rules as per datamodel precedence shown below
+		## Non empty remote host, empty dport
+		## empty remote host, non empty dport
+		## empty remote host, empty dport
+		if [ -n "${EMPTY_PORT}" ]; then
+			echo "${EMPTY_PORT}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd)"
+				exec_cmd $cmd1
+			done
+		fi
+
+		if [ -n "${EMPTY_HOST}" ]; then
+			echo "${EMPTY_HOST}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd)"
+				exec_cmd $cmd1
+			done
+		fi
+
+		if [ -n "${EMPTY_HOST_PORT}" ]; then
+			echo "${EMPTY_HOST_PORT}" | while read cmd; do
+				cmd1="iptables -t nat $(echo $cmd)"
+				exec_cmd $cmd1
+			done
+		fi
+	done
+}
+
+# Re-order portmapping rules according to precedence hierarchy
+reorder_dnat_rules

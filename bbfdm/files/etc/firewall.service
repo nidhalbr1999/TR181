@@ -1,0 +1,163 @@
+#!/bin/sh
+
+. /lib/functions.sh
+
+log() {
+	echo "${@}"|logger -t firewall.service -p info
+}
+
+exec_cmd() {
+	if ! eval "$*"; then
+		log "Failed to run [$*]"
+		echo "-1"
+		return 0
+	fi
+
+	echo "0"
+	return 0
+}
+
+add_iptable_rule() {
+	chain_name=$1
+	protocol=$2
+	dest_port=$3
+	icmp_type=$4
+	family=$5
+	src_prefix=$6
+	action=$7
+	res=-1
+
+	cmd="-I ${chain_name}"
+
+	if [ -n "${protocol}" ]; then
+		cmd="${cmd} -p $protocol"
+
+		if [ "${protocol}" -eq 41 ] || [ "${protocol}" -eq 43 ] || [ "${protocol}" -eq 44 ] ||
+		   [ "${protocol}" -eq 58 ] || [ "${protocol}" -eq 59 ] || [ "${protocol}" -eq 60 ]; then
+		   	# Explicit v6 protocols
+			if [ "${family}" = "ipv4" ]; then
+				echo $res
+				return 0
+			else
+				family="ipv6"
+			fi
+		elif [ "${protocol}" -eq 1 ]; then
+		   	# Explicit v4 protocols
+			if [ "${family}" = "ipv6" ]; then
+				echo $res
+				return 0
+			else
+				family="ipv4"
+			fi
+		fi
+
+		# Limitation:: iptables do not accept dport without specific protocol
+		count=$(echo "${dest_port}" | sed -n "/-1/p" | wc -l)
+
+		if [ "${count}" -eq 0 ]; then
+			# dest_port not contains -1 so need to have this match criteria
+			count=$(echo "${dest_port}" | wc -w)
+			if [ "${count}" -gt 1 ]; then
+				# multiple ports present
+				port=$(echo "${dest_port}" | sed "s/ /,/g")
+				cmd="${cmd} -m multiport --dports ${port}"
+			else
+				cmd="${cmd} --dport ${dest_port}"
+			fi
+		fi
+	fi
+
+	if [ "${family}" = "ipv4" ] || [ "${family}" = "-1" ]; then
+		if [ "${protocol}" -eq 1 ] && [ "${icmp_type}" -ge 0 ]; then
+			cmd="${cmd} --icmp-type ${icmp_type}"
+		fi
+
+		if [ -z "${src_prefix}" ]; then
+			res=$(exec_cmd "iptables ${cmd} -m comment --comment IPtables_service_rule -j ${action}")
+		else
+			#Add ipv4 sources if any
+			src_list=""
+			for src in $src_prefix; do
+				ret=$(echo $src | grep ":" | wc -l)
+				if [ "${ret}" -eq 0 ]; then
+					src_list="$src,$src_list"
+				fi
+			done
+
+			if [ -n "$src_list" ]; then
+				src_list=$(echo "${src_list}" | sed "s/,$//")
+				res=$(exec_cmd "iptables -s $src_list ${cmd} -m comment --comment IPtables_service_rule -j ${action}")
+			fi
+		fi
+	fi
+
+	if [ "${family}" = "ipv6" ] || [ "${family}" = "-1" ]; then
+		if [ "${protocol}" -eq 58 ] && [ "${icmp_type}" -ge 0 ]; then
+			cmd="${cmd} --icmpv6-type ${icmp_type}"
+		fi
+
+		if [ -z "${src_prefix}" ]; then
+			res=$(exec_cmd "ip6tables ${cmd} -m comment --comment IP6tables_service_rule -j ${action}")
+		else
+			#Add ipv6 sources if any
+			src_list=""
+			for src in $src_prefix; do
+				ret=$(echo $src | grep ":" | wc -l)
+				if [ "${ret}" -eq 1 ]; then
+					src_list="$src,$src_list"
+				fi
+			done
+
+			if [ -n "$src_list" ]; then
+				src_list=$(echo "${src_list}" | sed "s/,$//")
+				res=$(exec_cmd "ip6tables -s $src_list ${cmd} -m comment --comment IP6tables_service_rule -j ${action}")
+			fi
+		fi
+	fi
+
+	echo $res
+}
+
+add_service() {
+	local enable proto family dest_port interface target icmp_type
+
+	config_get enable "$1" enable "0"
+	config_get icmp_type "$1" icmp_type "-1"
+	config_get target "$1" target "Accept"
+	config_get interface "$1" interface ""
+	config_get family "$1" family "-1"
+	config_get dest_port "$1" dest_port "-1"
+	config_get proto "$1" proto "-1"
+	config_get src_prefix "$1" src_prefix ""
+
+	if [ "${enable}" -eq 0 ] || [ -z "${interface}" ]; then
+		return 0
+	fi
+
+	action=$(echo "${target}" | tr a-z A-Z)
+	chain_name="zone_${interface}_input"
+	res=0
+
+	count=$(echo "${proto}" | sed -n "/-1/p" | wc -l)
+
+	if [ "${count}" -eq 0 ]; then
+		# proto not contains -1 so need to have this match criteria
+		for protocol in $proto; do
+			res=$(add_iptable_rule "$chain_name" "$protocol" "$dest_port" "$icmp_type" "$family" "$src_prefix" "$action")
+		done
+	else
+		# proto contains -1 so no need to have this match criteria
+		res=$(add_iptable_rule "$chain_name" "" "$dest_port" "$icmp_type" "$family" "$src_prefix" "$action")
+	fi
+
+	if [ "${res}" -ne 0 ]; then
+		uci -q set firewall."${1}".status="Error"
+	else
+		uci -q set firewall."${1}".status=""
+	fi
+
+	uci commit firewall
+}
+
+config_load firewall
+config_foreach add_service "service"

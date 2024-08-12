@@ -1,0 +1,11 @@
+#!/bin/sh
+
+# rename bbfdmd enabled option to enable
+val="$(uci -q get bbfdm.bbfdmd.enabled)"
+if [ -n "${val}" ]; then
+	uci -q set bbfdm.bbfdmd.enabled=""
+	uci -q set bbfdm.bbfdmd.enable="${val}"
+fi
+
+exit 0
+
